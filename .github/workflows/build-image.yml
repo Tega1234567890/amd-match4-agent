@@ -1,0 +1,99 @@
+name: build-and-push-image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore: ["**.md"]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/tega1234567890/amd-match4-agent
+  TAG: v1
+  MODEL_REPO: Qwen/Qwen2.5-1.5B-Instruct
+
+concurrency:
+  group: build-image
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Free runner disk space (the ROCm base is ~20 GB compressed / ~29 GiB unpacked)
+        run: |
+          df -h / /mnt || true
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup \
+                      /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/share/swift \
+                      /usr/local/share/powershell /usr/local/lib/node_modules /opt/microsoft || true
+          sudo docker image prune -af || true
+          sudo swapoff -a && sudo rm -f /mnt/swapfile /swapfile || true
+          sudo apt-get clean || true
+          df -h / /mnt || true
+
+      - name: Put Docker's data-root on the larger disk
+        run: |
+          ROOT_FREE=$(df -BG --output=avail / | tail -1 | tr -dc 0-9)
+          MNT_FREE=$(df -BG --output=avail /mnt | tail -1 | tr -dc 0-9 || echo 0)
+          echo "free: / ${ROOT_FREE}G, /mnt ${MNT_FREE}G"
+          if [ "${MNT_FREE:-0}" -gt "${ROOT_FREE}" ]; then
+            sudo systemctl stop docker docker.socket
+            sudo mkdir -p /mnt/docker
+            echo '{"data-root": "/mnt/docker"}' | sudo tee /etc/docker/daemon.json
+            sudo systemctl start docker
+            echo "docker data-root -> /mnt/docker"
+          fi
+          docker info --format 'DockerRootDir={{.DockerRootDir}}'
+
+      - uses: actions/checkout@v4
+
+      - name: Download model weights into the build context (image must work offline)
+        run: |
+          python3 -m pip install --quiet --upgrade "huggingface_hub[cli]"
+          python3 - <<'PY'
+          from huggingface_hub import snapshot_download
+          snapshot_download("${{ env.MODEL_REPO }}", local_dir="models/llm",
+                            allow_patterns=["*.json", "*.safetensors", "*.txt", "merges.txt", "vocab.json", "LICENSE"])
+          PY
+          rm -rf models/llm/.cache
+          du -sh models/llm && ls models/llm
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build image (classic builder, no squash -> base layers stay identical)
+        env:
+          DOCKER_BUILDKIT: "1"
+        run: |
+          docker build \
+            --label org.opencontainers.image.source=https://github.com/${{ github.repository }} \
+            --label org.opencontainers.image.description="AMD AI League Match 4 web retrieval agent (unofficial contract)" \
+            -t "$IMAGE:$TAG" -t "$IMAGE:sha-${GITHUB_SHA::7}" .
+          df -h / /mnt || true
+
+      - name: Image size (uncompressed)
+        run: |
+          docker image inspect "$IMAGE:$TAG" --format 'uncompressed bytes: {{.Size}}'
+          docker image inspect "$IMAGE:$TAG" --format '{{.Size}}' | awk '{printf "uncompressed GiB: %.2f\n", $1/1073741824}'
+          docker history --no-trunc --format '{{.Size}}\t{{.CreatedBy}}' "$IMAGE:$TAG" | head -15
+
+      - name: Smoke test (CPU runner, no GPU) -- contract shape only
+        run: |
+          docker run --rm "$IMAGE:$TAG" python3 -c "import torch, transformers, bs4, lxml, requests; print('imports ok', torch.__version__, transformers.__version__)"
+          mkdir -p out
+          docker run --rm -v "$PWD/out:/app/output" "$IMAGE:$TAG" \
+            python3 /app/app.py --query-id smoke_01 \
+            --query "Which TCP port does HTTPS use by default?" \
+            --url https://en.wikipedia.org/wiki/HTTPS --stdout
+          python3 -c "import json; d=json.load(open('out/smoke_01_output.json')); assert isinstance(d['answer'], str) and isinstance(d['citations'], list); print('contract ok', d)"
+          docker run --rm --network none "$IMAGE:$TAG" python3 -c "import os; assert os.path.isfile('/models/llm/config.json'); print('weights baked in')"
+
+      - name: Push to GHCR
+        run: |
+          docker push "$IMAGE:$TAG"
+          docker push "$IMAGE:sha-${GITHUB_SHA::7}"
+          echo "pushed $IMAGE:$TAG"

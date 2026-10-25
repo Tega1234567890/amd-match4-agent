@@ -1,0 +1,5 @@
+.venv
+original
+tests
+models/llm/.cache
+**/__pycache__

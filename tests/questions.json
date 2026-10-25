@@ -1,0 +1,12 @@
+{"queries": [
+ {"id": "q01", "query": "In what year was the Eiffel Tower completed?", "url": "https://en.wikipedia.org/wiki/Eiffel_Tower", "expected": "1889", "aliases": []},
+ {"id": "q02", "query": "What is the capital city of Nigeria?", "url": "https://en.wikipedia.org/wiki/Nigeria", "expected": "Abuja", "aliases": []},
+ {"id": "q03", "query": "Who created the Python programming language?", "url": null, "expected": "Guido van Rossum", "aliases": []},
+ {"id": "q04", "query": "What is the atomic number of gold?", "url": null, "expected": "79", "aliases": []},
+ {"id": "q05", "query": "How high is Mount Kilimanjaro in metres?", "url": "https://en.wikipedia.org/wiki/Mount_Kilimanjaro", "expected": "5895", "aliases": ["5,895 m", "5895 m", "5,895"]},
+ {"id": "q06", "query": "On what date did Nigeria gain independence from the United Kingdom?", "url": null, "expected": "1 October 1960", "aliases": ["October 1, 1960", "1 Oct 1960"]},
+ {"id": "q07", "query": "Which TCP port does HTTPS use by default?", "url": "https://en.wikipedia.org/wiki/HTTPS", "expected": "443", "aliases": []},
+ {"id": "q08", "query": "What HTTP status code value does http.HTTPStatus.IM_A_TEAPOT have?", "url": "https://docs.python.org/3/library/index.html", "expected": "418", "aliases": []},
+ {"id": "q09", "query": "Who wrote the novel Things Fall Apart?", "url": null, "expected": "Chinua Achebe", "aliases": []},
+ {"id": "q10", "query": "What is the maximum junction temperature of the TQ-40 chip?", "url": "https://en.wikipedia.org/wiki/Eiffel_Tower", "expected": "", "aliases": []}
+]}

@@ -1,0 +1,5 @@
+requests>=2.31
+beautifulsoup4>=4.12
+lxml>=5.0
+transformers>=4.44
+accelerate>=0.30
