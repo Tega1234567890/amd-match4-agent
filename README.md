@@ -9,7 +9,7 @@ the source URL**, or an empty answer if it can't find a grounded one.
 > changed in one place once the official spec lands.
 
 ## Image
-`ghcr.io/tega1234567890/amd-match4-agent:v1`, built by `.github/workflows/build-image.yml` on GitHub Actions:
+Image reference is provided privately in the lablab submission. The image is built by `.github/workflows/build-image.yml` on GitHub Actions:
 - base `rocm/pytorch:rocm10.0_ubuntu26.04_py3.14_pytorch_release_2.13.0` (the MC2/MC3 mandated base, not squashed)
 - Qwen2.5-1.5B-Instruct weights baked in at `/models/llm`, so the model loads offline
 - code in `/app`, `CMD sleep infinity`, no port
@@ -37,7 +37,7 @@ the source URL**, or an empty answer if it can't find a grounded one.
 
 ## Run
 ```
-docker run -d --name m4 ghcr.io/tega1234567890/amd-match4-agent:v1
+docker run -d --name m4 <image>   # image reference provided privately in the lablab submission
 docker exec m4 python3 /app/app.py --index
 docker exec m4 python3 /app/app.py --query-id q1 --query "Which TCP port does HTTPS use by default?" \
        --url https://en.wikipedia.org/wiki/HTTPS --stdout
